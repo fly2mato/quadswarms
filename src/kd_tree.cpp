@@ -12,9 +12,6 @@ KDTree::KDTree(vector<Vector3d> & p)
     , min_dist(0)  
     , max_dist(-1)
 {
-//     root = new Node;
-//     root->parent = NULL;
-//     BuildTree(points, root, 0, points.size());
     unsigned int n = points.size();
     parent = vector<int>(n, -1); 
     left_child = vector<int>(n, -1);
@@ -33,7 +30,6 @@ KDTree::KDTree(vector<Vector3d> & p)
 
 void KDTree::BuildTree(vector<int> & index, int * root, int left_p, int right_p, int parent_id){
     //right_p 等价 .end(), 最后一个元素的后一个位置
-    // cout << "x1 " << left_p << ',' << right_p << ',' << *root << ',' << parent_id << ',' << endl;
     if (left_p == right_p - 1) {
         *root = index[left_p];
         left_child[*root] = right_child[*root] = -1;
@@ -48,38 +44,25 @@ void KDTree::BuildTree(vector<int> & index, int * root, int left_p, int right_p,
     } else {
         temp_fid = (feature_id[parent_id] + 1) % 3;
     }
-    // cout << "y1" << endl;
 
     int median_id = (right_p + left_p)/2;
     SplitPoints(index, left_p, right_p, temp_fid, median_id);
-    // cout << "index : ";
-    // for(int i = 0; i < 5; ++i) {
-    //     cout << index[i] << ',';
-    // }
-    // cout << endl;
-    // cout << "y2" << endl;
 
     *root = index[median_id];
     parent[*root] = parent_id;
-    // cout << "parent: " << *root << '=' << parent_id << endl;
     feature_id[*root] = temp_fid;
 
     if (left_p < median_id) {
-        // cout << "y3o" << endl;
         BuildTree(index, &left_child[*root], left_p, median_id, *root);
-        // cout << "y3" << endl;
     }
 
     if (median_id + 1 < right_p) {
-        // cout << "y4o" << endl;
         BuildTree(index, &right_child[*root], median_id+1, right_p, *root);
-        // cout << "y4" << endl;
     }
     return ;
 }
 
 int KDTree::ChooseFeature(vector<int> &index, int left_p, int right_p){
-    // cout << "x2 " << left_p << ',' << right_p << endl;
     Vector3d sum_sqr = Vector3d::Zero(3, 1);
     Vector3d sum = Vector3d::Zero(3, 1);
 
@@ -92,20 +75,16 @@ int KDTree::ChooseFeature(vector<int> &index, int left_p, int right_p){
     int row, col;
     Vector3d variance = sum_sqr / n - (sum.cwiseProduct(sum) / n / n);
     variance.maxCoeff(&row, &col);
-    // cout << "fid: " << row << endl;
     return row;
 }
 
 void KDTree::SplitPoints(vector<int> &index, int left_p, int right_p, int f_id, int mid_p){
-    // cout << "x3 " << left_p << ',' << right_p << ',' << f_id << ',' << mid_p << ',' << endl;
     int i,j,temp;
     i = temp = left_p;
     j = right_p;
     while(1) {
         while(++i < right_p && points[index[i]](f_id) < points[index[temp]](f_id)) {;}
         while(points[index[--j]](f_id) > points[index[temp]](f_id) && j > left_p) {;}
-        // cout << "xx3 " << i << ',' << j << endl;
-        // cout << "xx3 " << index[i] << ',' << index[j] << endl;
         if (i > j) break;
         swap(&index[i], &index[j]);
     }
@@ -139,10 +118,10 @@ int KDTree::SearchToLeaf(const Vector3d &target, int p){
 int KDTree::GetNearestNeighbor(const Vector3d & target, int cur_root) {
     if (cur_root < 0) cur_root = root_id;
     int cur = SearchToLeaf(target, cur_root);
-    // int best = cur;
     int bro = -1;
-    // int bro_best = -1;    
     double dist_cur, dist_bro;//, dist_best = INFINITY;
+    // int best = cur;
+    // int bro_best = -1;    
 
     while(1) {
         dist_cur = GetEulerDist(target, points[cur]);
