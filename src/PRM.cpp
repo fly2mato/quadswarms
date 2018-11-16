@@ -27,20 +27,28 @@ PRM::PRM(unsigned int sampleN)
 
     Vector3d temp;
     long int count = 0;
-    while (!(count > (long int)(sampleN * sampleN) || vertex.size() == sampleN)) {
-        count ++;
-        temp = Vector3d(random(0, map_size(0)), random(0, map_size(1)), random(0, map_size(2)));
-        int flag = 0;
-        for(unsigned int j = 0; j < vertex.size(); ++j) {
-            double di = (temp - vertex[j]).norm();
-            if (di < nearest_radius) {
-                flag = 1;
-                break;
-            }
-        }
-        if (flag) continue;
-        vertex.push_back(temp);                
-    }
+    // while (!(count > (long int)(sampleN * sampleN) || vertex.size() == sampleN)) {
+    //     count ++;
+    //     temp = Vector3d(random(0, map_size(0)), random(0, map_size(1)), random(0, map_size(2)));
+    //     // temp = Vector3d(random(0, map_size(0)), random(0, map_size(1)), 0);
+    //     int flag = 0;
+    //     for(unsigned int j = 0; j < vertex.size(); ++j) {
+    //         double di = (temp - vertex[j]).norm();
+    //         if (di < nearest_radius) {
+    //             flag = 1;
+    //             break;
+    //         }
+    //     }
+    //     if (flag) continue;
+    //     vertex.push_back(temp);                
+    // }
+    vertex.push_back(Vector3d(0,1,0));
+    vertex.push_back(Vector3d(1,0,0));
+    vertex.push_back(Vector3d(1,1,0));
+    vertex.push_back(Vector3d(1,2,0));
+    vertex.push_back(Vector3d(1,3,0));
+    vertex.push_back(Vector3d(1.5,2.5,0));
+
     
     sampleN = vertex.size();
     cout << "sampleN : " << sampleN << endl;
@@ -49,11 +57,18 @@ PRM::PRM(unsigned int sampleN)
     vector<int> ans;
     
     for(uint i = 0; i < sampleN; ++i) {
-        ans = p_kd_tree->GetKNN(vertex[i], 4, 2, -1);
-        for(uint j = 0; j < 4; ++j) {
-            if (ans[j] == i || ans[j] == -1) continue;
+        // ans = p_kd_tree->GetKNN(vertex[i], 4, 2, -1);
+        ans = p_kd_tree->GetKNN(vertex[i], 4, 0, 1.1);
+        for(uint j = 0; j < nearest_num && j < ans.size(); ++j) {
+            if (ans[j] == -1) continue; 
+            if (ans[j] == i) {//可以到达自己
+                edge[i].push_back(ans[j]);
+                edge_dist[i].push_back(0);
+                continue;
+            }            
+
             int flag = 0;
-            for(unsigned int k = 0; k < edge[i].size(); ++k) {
+            for(uint k = 0; k < edge[i].size(); ++k) {
                 if (edge[i][k] == ans[j]) {
                     flag = 1;
                     break;
@@ -89,6 +104,36 @@ vector<int> PRM::SearchPath(Vector3d source, Vector3d goal){
     vector<int> path;
 
     if (AstarSearch(source_index[0], goal_index[0], path)) {
+        for(uint i = 0; i < path.size(); ++i) {
+            cout << vertex[path[i]].transpose()<<endl;
+        }
+    }
+    return path;
+}
+
+vector<int> PRM::SearchPathConstrain(Vector3d source, Vector3d goal){
+    vector<int> source_index;
+    vector<int> goal_index;
+
+    source_index = p_kd_tree->GetKNN(source, 1, 0, -1);
+    goal_index = p_kd_tree->GetKNN(goal, 1, 0, -1);
+
+    vector<int> path;
+
+    vector<int> constrain_id;
+    vector<int> constrain_step;
+
+    constrain_id.clear();
+    constrain_step.clear();
+
+    constrain_id.push_back(2);
+    constrain_step.push_back(1);
+
+    constrain_id.push_back(4);
+    constrain_step.push_back(4);
+    
+
+    if (ConstrainAstartSearch(source_index[0], goal_index[0], path, constrain_id, constrain_step)) {
         for(uint i = 0; i < path.size(); ++i) {
             cout << vertex[path[i]].transpose()<<endl;
         }
@@ -133,7 +178,7 @@ int PRM::AstarSearch(int source, int goal, vector<int> &path){
         if (ni == goal) {
             search_complete_flag = 1;
             stack<int> GoTo;
-            while(ni > 0) {
+            while(ni >= 0) {
                 GoTo.push(ni);      
                 ni = cameFrom[ni];
             }
@@ -155,13 +200,6 @@ int PRM::AstarSearch(int source, int goal, vector<int> &path){
 
             int xi = edge[ni][xx];
             
-            // if (IsGridOccupy(neighbor.row(xx))) {
-            //     cameFrom[xi] = -1;
-            //     gScore[xi] = 10000;
-            //     fScore[xi] = 10000;
-            //     continue;
-            // }
-
             if (find(closedSet.begin(), closedSet.end(), xi) != closedSet.end()){
                 continue;
             }
@@ -193,7 +231,7 @@ int PRM::AstarSearch(int source, int goal, vector<int> &path){
             
             cameFrom[xi] = ni;
             gScore[xi] = tentative_gScore;
-            fScore[xi] = gScore[xi] + HeuristicCostEstimate(ni, goal);
+            fScore[xi] = gScore[xi] + HeuristicCostEstimate(xi, goal);
         }            
     }  
 
@@ -201,12 +239,124 @@ int PRM::AstarSearch(int source, int goal, vector<int> &path){
 }
 
 
+
+int PRM::ConstrainAstartSearch(int source, int goal, vector<int> &path,
+                                vector<int> &constrain_id, vector<int>&constrain_step){
+    vector< vector<double>> gScore(vertex.size(), vector<double>(MAX_PATH_STEP, 1000000));
+    gScore[source][0] = 0;
+
+    vector< vector<double>> fScore(vertex.size(), vector<double>(MAX_PATH_STEP, 1000000));
+    fScore[source][0] = HeuristicCostEstimate(source, goal);
+    
+    vector< vector<int>> cameFrom(vertex.size(), vector<int>(MAX_PATH_STEP, -2));    
+    
+    for(auto i_cons_id = constrain_id.begin(), i_cons_step = constrain_step.begin(); 
+        i_cons_id != constrain_id.end(); ++i_cons_id, ++i_cons_step) {
+        cameFrom[*i_cons_id][*i_cons_step] = -1;
+    }
+
+    list<int> openSet;
+    list<int> openSet_step;
+
+    openSet.clear();
+    openSet.push_back(source);
+    openSet_step.clear();
+    openSet_step.push_back(0);
+
+    vector< vector<int>> closedSet(vertex.size(), vector<int>(MAX_PATH_STEP, 0));    
+
+    path.push_back(source);
+
+    int search_complete_flag = 0;
+
+    while(openSet.size() > 0) {
+        list<int>::iterator i, mini;
+        list<int>::iterator i_step, mini_step;
+
+        i = mini = openSet.begin();
+        i_step = mini_step = openSet_step.begin();
+
+        int ni = *i;
+        int ni_step = *i_step;
+
+        for(; i != openSet.end(); ++i, ++i_step) {
+            if (fScore[*i][*i_step] < fScore[*mini][*mini_step]) {
+                mini = i; 
+                mini_step = i_step;
+                
+            }
+        }
+        ni = *mini; 
+        ni_step = *mini_step; 
+
+        if (ni == goal) {
+            search_complete_flag = 1;
+            stack<int> GoTo;
+            while(ni >= 0) {
+                cout << ni << endl;
+                GoTo.push(ni);      
+                ni = cameFrom[ni][ni_step];
+                ni_step --;
+            }
+            GoTo.pop(); //弹出起始网格点
+            while(!GoTo.empty() && GoTo.size() > 1) {
+                ni = GoTo.top();
+                path.push_back(ni);
+                GoTo.pop();
+            }
+            path.push_back(goal);
+            break;
+        }
+
+        // closedSet.push_back(ni);
+        closedSet[ni][ni_step] = 1;
+        if (mini!= openSet.end()) {
+            openSet.erase(mini);
+            openSet_step.erase(mini_step);
+        }
+
+        int xi_step = ni_step + 1;
+        for(uint xx = 0; xx < edge[ni].size(); ++xx){ //这里就需要edge包含到达自己的边，修改map生成部分
+
+            int xi = edge[ni][xx];
+
+            if (cameFrom[xi][xi_step] == -1) { //-1表示约束不可到达，跳过
+                continue;
+            }
+
+            if (closedSet[xi][xi_step] == 0) {
+                openSet.push_back(xi);
+                openSet_step.push_back(xi_step);
+            } else {
+                continue;
+            }
+
+            double tentative_gScore = gScore[ni][ni_step] + edge_dist[ni][xx] + WattingTimeCost(xi-ni);
+            if (tentative_gScore >= gScore[xi][xi_step])
+                continue;
+            
+            cameFrom[xi][xi_step] = ni;
+            gScore[xi][xi_step] = tentative_gScore;
+            fScore[xi][xi_step] = gScore[xi][xi_step] + HeuristicCostEstimate(xi, goal);
+        }            
+    }  
+
+    return search_complete_flag;
+            
+}
+
+
+
 double PRM::HeuristicCostEstimate(int start, int goal){
     Vector3d d = (vertex[goal] - vertex[start]);
     return abs(d(0)) + abs(d(1)) + abs(d(2));
 }
 
-
+double PRM::WattingTimeCost(int delta_id) {
+    // 这个值应该 不大于2倍的相邻点间隔，要不然会出现回退的情况
+    if (delta_id == 0) return 1.5; 
+    else return 0;
+}
 
 double PRM::random(double start, double end) {
     return start+(end-start)*rand()/(RAND_MAX + 1.0);

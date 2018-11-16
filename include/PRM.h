@@ -11,8 +11,11 @@
 #include <kd_tree.h>
 #include <stack>
 
+#define MAX_PATH_STEP 100
+
 using namespace std;
 using namespace Eigen;
+
 
 struct Node{
     Vector3d point;
@@ -39,8 +42,14 @@ public:
     PRM(unsigned int sampleN); 
 
     vector<int> SearchPath(Vector3d source, Vector3d goal);
+    vector<int> SearchPathConstrain(Vector3d source, Vector3d goal);
+
     int AstarSearch(int source_index, int goal_index, vector<int> &path);
+    int ConstrainAstartSearch(int source_index, int goal_index, vector<int> &path,
+                                vector<int> &constrain_id, vector<int>&constrain_step);
+
     double HeuristicCostEstimate(int start, int goal);
+    double WattingTimeCost(int delta_id);
 
     double random(double start, double end);
 };

@@ -31,16 +31,26 @@ int main(int argc, char *argv[]) {
     }
 
     srand(unsigned(time(0)));
-    Vector3d source(random(0,10), random(0,10), random(0,10));
-    Vector3d goal(random(90,100), random(90,100), random(90,100));
+    // Vector3d source(random(0,10), random(0,10), random(0,10));
+    // Vector3d goal(random(90,100), random(90,100), random(90,100));
 
     // Vector3d source(random(0,10), random(0,10), 0);
     // Vector3d goal(random(90,100), random(90,100), 0);
+
+    Vector3d source(0,1,0);
+    Vector3d goal(1,3,0);
+
+
+    cout << "==================" << endl;
+    cout << source.transpose() << endl;
+    prm.SearchPathConstrain(source, goal);
+    cout << goal.transpose() << endl;
 
     cout << "==================" << endl;
     cout << source.transpose() << endl;
     prm.SearchPath(source, goal);
     cout << goal.transpose() << endl;
+
 
     return 1;
 }
