@@ -94,6 +94,91 @@ PRM::PRM(unsigned int sampleN)
     }
 }
 
+PRM::PRM(uint sampleN, vector<Vector3d> &source, vector<Vector3d> &goals, Vector3d low_bound, Vector3d up_bound) 
+    : map_size(Vector3d(100,100,100))
+    , nearest_num(5)
+    , nearest_radius(10)
+    , neighbor_min_dist(1.9)
+{
+    vertex.clear();
+    vertex.reserve(sampleN);
+
+    for(auto i = source.begin(); i != source.end(); ++i) {
+        vertex.push_back(*i);
+    }
+    for(auto i = goals.begin(); i != goals.end(); ++i) {
+        vertex.push_back(*i);
+    }
+
+    edge = vector< vector<int>>(sampleN);
+    edge_dist = vector< vector<double>>(sampleN);
+    
+    srand(unsigned(time(0)));
+
+    Vector3d temp;
+    long int count = 0;
+    while (!(count > (long int)(sampleN * sampleN) || vertex.size() == sampleN)) {
+        count ++;
+        temp = Vector3d(random(low_bound(0), up_bound(0)), random(low_bound(1), up_bound(1)), random(low_bound(2), up_bound(2)));
+        //temp = Vector3d(random(0, map_size(0)), random(0, map_size(1)), random(0, map_size(2)));
+        // temp = Vector3d(random(0, map_size(0)), random(0, map_size(1)), 0);
+        int flag = 0;
+        for(unsigned int j = 0; j < vertex.size(); ++j) {
+            double di = (temp - vertex[j]).norm();
+            if (di < nearest_radius) {
+                flag = 1;
+                break;
+            }
+        }
+        if (flag) continue;
+        vertex.push_back(temp);                
+    }
+    
+    sampleN = vertex.size();
+    cout << "sampleN : " << sampleN << endl;
+    p_kd_tree = new KDTree(vertex);
+
+    vector<int> ans;
+    
+    for(uint i = 0; i < sampleN; ++i) {
+        ans = p_kd_tree->GetKNN(vertex[i], nearest_num, neighbor_min_dist, -1);
+        ans.push_back(i);
+        for(uint j = 0; j < nearest_num && j < ans.size(); ++j) {
+            if (ans[j] == -1) continue; 
+            if (ans[j] == i) {//可以到达自己
+                edge[i].push_back(ans[j]);
+                edge_dist[i].push_back(0);
+                continue;
+            }            
+
+            int flag = 0;
+            for(uint k = 0; k < edge[i].size(); ++k) {
+                if (edge[i][k] == ans[j]) {
+                    flag = 1;
+                    break;
+                }
+            }
+            if (flag == 0) {
+                edge[i].push_back(ans[j]);
+                edge_dist[i].push_back((vertex[i] - vertex[ans[j]]).norm());
+            }
+
+            flag = 0;
+            for(uint k = 0; k < edge[ans[j]].size(); ++k) {
+                if (edge[ans[j]][k] == i) {
+                    flag = 1;
+                    break;
+                }
+            }
+            if (flag == 0) {
+                edge[ans[j]].push_back(i);
+                edge_dist[ans[j]].push_back((vertex[i] - vertex[ans[j]]).norm());
+            }
+        }
+    }
+}
+
+
 vector<int> PRM::SearchPath(Vector3d source, Vector3d goal){
     vector<int> source_index;
     vector<int> goal_index;

@@ -43,6 +43,7 @@ public:
     // PRM(){};
     ~PRM(){delete p_kd_tree;};
     PRM(unsigned int sampleN); 
+    PRM(uint sampleN, vector<Vector3d> &source, vector<Vector3d> &goals, Vector3d low_bound, Vector3d up_bound);
 
     vector<int> SearchPath(Vector3d source, Vector3d goal);
     vector<int> SearchPathConstrain(Vector3d source, Vector3d goal);
