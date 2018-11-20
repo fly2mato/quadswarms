@@ -1,5 +1,12 @@
 quadswarms
 ====
+## 基本思路
+- 空间随机采样加入图的顶点集，起始点列和目标点列都作为顶点加入图中。
+- 对顶点建立KD-Tree，搜索每个顶点的K个近邻（大顶堆排序），作为双向边加入图的边集。
+- 采用Comflict-Based Search算法，分为high-level和low-level进行搜索
+- low-level采用A-star
+- high-level每次更新一条约束
+- 后续轨迹优化待实现
 
 ## 文件说明
 
