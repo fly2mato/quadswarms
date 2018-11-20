@@ -27,7 +27,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG " )   # release包优化
 
 
 add_executable(testkdtree "test/testkdtree.cpp" "src/kd_tree.cpp")
-add_executable(testprm "test/testPRM.cpp" "src/PRM.cpp" "src/kd_tree.cpp")
+add_executable(testprm "test/testPRM.cpp" "src/PRM.cpp" "src/kd_tree.cpp" "src/SearchTree.cpp")
 
 
 #SET(CMAKE_BUILD_TYPE "Debug") 
